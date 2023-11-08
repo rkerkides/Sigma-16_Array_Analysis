@@ -1,0 +1,130 @@
+; --- Array Analysis Program ---
+;
+; This program performs an analysis on an array of two's complement integers.
+; It calculates the sum of all negative elements, counts the number of non-negative
+; elements, counts the number of positive odd elements, and detects any overflow
+; that occurs when summing the negative elements. The results are stored in the
+; variables negsum, pzcount, oddcount, and overflow respectively.
+; The array is named X, and its elements X[0] through X[n-1] are defined by a sequence
+; of data statements following the label X. The size of the array is determined by
+; the two's complement integer variable n. The program initializes the analysis variables
+; to 0 and iterates through the array to perform the calculations. If an overflow is detected
+; during the sum of negative elements, the overflow flag is set to 1. The program continues
+; to count the non-negative and positive odd elements regardless of overflow status.
+; The end of the program stores the results back into their respective variables and terminates.
+; The array and size are initialized with data statements, and the program includes a developer
+; acceptance test with a predefined array and expected results.
+;
+; HLL algorithm
+;       int n = 12;
+;       int[] X = new int[n];
+
+;       int negsum = 0;
+;       int pzcount = 0;
+;       int oddcount = 0;
+;       boolean overflow = false;
+
+;       for (int i = 0; i < n; i++) {
+;           if (X[i] < 0) {
+;               int tempSum = negsum + X[i];
+;               if (negsum < 0 && tempSum >= 0) {
+;                   overflow = true;
+;               }
+;               negsum = tempSum;
+;          	} else {
+;                   pzcount++;
+;                   if (X[i] % 2 == 1) {
+;                       oddcount++;
+;                   }
+;               }
+;           }
+;	}
+
+
+; Register Assignments:
+; 	R1 = n (array size)
+; 	R2 = negsum (sum of negative elements)
+; 	R3 = pzcount (count of non-negative elements)
+; 	R4 = oddcount (count of positive odd elements)
+; 	R5 = overflow (overflow flag)
+; 	R6 = 1 (constant value for incrementing)
+; 	R7 = i (loop index), initially 0
+; 	R8 = temporary flag for comparisons
+; 	R9 = current element X[i]
+; 	R10 = temporary sum for overflow checking
+; 	R11 = temporary flag for overflow checking
+
+
+; Initialize registers	
+	LOAD	R1,n[R0]	; R1 = n
+	LOAD	R2,negsum[R0]	; R2 = negsum
+	LOAD	R3,pzcount[R0]	; R3 = pzcount
+	LOAD	R4,oddcount[R0]	; R4 = oddcount
+	LOAD	R5,overflow[R0]	; R5 = overflow
+	LEA	R6,1[R0]	; R6 = 1 (constant)
+	LEA	R7,0[R0]	; R7 = 0 (i)
+
+; for (i = 0; i < n; i++)
+FORLOOP	CMPLT	R8,R7,R1	; R8 = (i < n)
+	JUMPF	R8,done[R0]	; If (i > n) goto done
+	LOAD	R9,X[R7]	; R9 = X[i]
+	
+; if (X[i] < 0)
+	CMPLT	R8,R9,R0	; R8 = (X[i] < 0)
+	JUMPF	R8,POSITIVE[R0]	; If (X[i] > 0) goto POSITIVE
+
+; Check for potential overflow before performing the addition
+	ADD	R10,R2,R9	; temporarySum = negsum + X[i]
+
+; if (negsum < 0 && tempSum >= 0)
+	CMPLT	R8,R2,R0	; R8 = (negsum < 0)
+	CMPLT	R11,R0,R10	; R11 = (0 < tempsum)
+	AND	R8,R8,R11	; R8 = (negsum < 0 && tempSum >= 0)
+	JUMPF	R8,SKIP[R0]	; If !(negsum < 0 && tempSum >= 0), no overflow, goto SKIP
+
+; Set overflow flag to true
+; This line will only be reached if (negsum < 0 && tempSum >= 0)
+	LEA	R5,1[R0]	; overflow = true
+
+; Regardless of whether or not we have overflow, negsum is incremented
+SKIP 	ADD	R2,R2,R9	; negsum += X[i]
+	JUMP	ITERATE[R0]	; Goto ITERATE
+		
+; else { pzcount++ }
+POSITIVE ADD	R3,R3,R6	; pzcount++
+
+; if (X[i] % 2 == 1)
+; Check if X[i] is odd by examining the least significant bit
+	AND	R8,R9,R6	; R8 = X[i] AND 1 (R6 is 1, so R8 is the LSB of R9)
+	JUMPF	R8,ITERATE[R0]	; If the LSB of X[i] is not 1, goto ITERATE
+	ADD	R4,R4,R6	; oddcount++
+	
+; Add one to i, and repeat loop 
+ITERATE	ADD	R7,R7,R6	; i++
+	JUMP	FORLOOP[R0]	; Goto FORLOOP
+	
+; Store results back to memory
+DONE	STORE   R2,negsum[R0]  	; Store negsum
+        STORE   R3,pzcount[R0] 	; Store pzcount
+        STORE   R4,oddcount[R0]	; Store oddcount
+        STORE   R5,overflow[R0]	; Store overflow
+	TRAP	R0,R0,R0	; Finish
+
+; Initialize data
+n 	DATA 	12		; Size of the array
+X 	DATA 	3		; X[0]
+	DATA	-6		; X[1]
+	DATA	27		; X[2]
+	DATA	101		; X[3]
+	DATA	50		; X[4]
+	DATA	0		; X[5]
+	DATA	-20		; X[6]
+	DATA	-21		; X[7]
+	DATA	19		; X[8]
+	DATA	6		; X[9]
+	DATA	4		; X[10]
+	DATA	-10		; X[11]
+negsum	DATA	0		; Sum of negative numbers
+pzcount	DATA	0		; Count of non-negative numbers
+oddcount DATA	0		; Count of positive odd numbers
+overflow DATA	0		; Overflow flag
